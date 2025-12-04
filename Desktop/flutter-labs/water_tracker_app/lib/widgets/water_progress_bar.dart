@@ -1,103 +1,115 @@
 import 'package:flutter/material.dart';
 
 class WaterProgressBar extends StatelessWidget {
-  final double progress; // от 0.0 до 1.0
+  final double progress;
   final String currentAmount;
   final String targetAmount;
+  final VoidCallback? onTap;
 
   const WaterProgressBar({
     super.key,
     required this.progress,
     required this.currentAmount,
     required this.targetAmount,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.blue[50],
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        children: [
-          // Заголовок
-          Text(
-            'ВОДНЫЙ БАЛАНС',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.blue[800],
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // Прогресс-бар
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              // Фоновый круг
-              Container(
-                width: 200,
-                height: 200,
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  shape: BoxShape.circle,
-                ),
-              ),
-
-              // Прогресс
-              SizedBox(
-                width: 200,
-                height: 200,
-                child: CircularProgressIndicator(
-                  value: progress,
-                  strokeWidth: 15,
-                  backgroundColor: Colors.grey[300],
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    _getProgressColor(progress),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.blue[50],
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          children: [
+            // Заголовок
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.water_drop, color: Colors.blue),
+                const SizedBox(width: 8),
+                Text(
+                  'ВОДНЫЙ БАЛАНС',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue[800],
                   ),
                 ),
-              ),
-
-              // Процент в центре
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '${(progress * 100).toInt()}%',
-                    style: const TextStyle(
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.blue,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    '$currentAmount / $targetAmount мл',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[700],
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-
-          // Текст под прогресс-баром
-          const SizedBox(height: 20),
-          Text(
-            _getMotivationalText(progress),
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 16,
-              fontStyle: FontStyle.italic,
-              color: Colors.blue[700],
+              ],
             ),
-          ),
-        ],
+            const SizedBox(height: 20),
+
+            // Прогресс-бар
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                // Фоновый круг
+                Container(
+                  width: 200,
+                  height: 200,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200],
+                    shape: BoxShape.circle,
+                  ),
+                ),
+
+                // Прогресс
+                SizedBox(
+                  width: 200,
+                  height: 200,
+                  child: CircularProgressIndicator(
+                    value: progress,
+                    strokeWidth: 15,
+                    backgroundColor: Colors.grey[300],
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      _getProgressColor(progress),
+                    ),
+                  ),
+                ),
+
+                // Процент в центре
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '${(progress * 100).toInt()}%',
+                      style: const TextStyle(
+                        fontSize: 36,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      '$currentAmount / $targetAmount мл',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+
+            // Текст под прогресс-баром
+            const SizedBox(height: 20),
+            Text(
+              _getMotivationalText(progress),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16,
+                fontStyle: FontStyle.italic,
+                color: Colors.blue[700],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

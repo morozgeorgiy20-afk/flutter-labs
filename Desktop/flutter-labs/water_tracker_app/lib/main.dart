@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
 import 'screens/home_screen.dart';
-// import 'screens/add_water_screen.dart';
-// import 'screens/history_screen.dart';
-// import 'screens/settings_screen.dart';
 
 void main() {
   runApp(const MainApp());
@@ -21,13 +18,21 @@ class MainApp extends StatelessWidget {
         appBarTheme: const AppBarTheme(
           backgroundColor: Colors.blue,
           foregroundColor: Colors.white,
+          centerTitle: true,
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.blue,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
         ),
       ),
       debugShowCheckedModeBanner: false,
       home: const HomeScreen(),
-      // Для тестирования других экранов, раскомментируйте:
-      // home: const AddWaterScreen(),
-      // home: const HistoryScreen(),
     );
   }
 }

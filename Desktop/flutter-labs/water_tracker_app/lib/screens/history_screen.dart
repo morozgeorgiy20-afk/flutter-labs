@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
+import '../models/water_entry.dart';
 
 class HistoryScreen extends StatelessWidget {
-  const HistoryScreen({super.key});
+  final List<WaterEntry> entries;
+
+  const HistoryScreen({
+    super.key,
+    required this.entries,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -19,9 +25,9 @@ class HistoryScreen extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildStatItem('Сегодня', '1.3 л'),
-                _buildStatItem('Всего', '8.7 л'),
-                _buildStatItem('Рекорд', '2.5 л'),
+                _buildStatItem('Сегодня', '${_calculateTodayTotal(entries)} мл'),
+                _buildStatItem('Всего', '${_calculateTotal(entries)} мл'),
+                _buildStatItem('Записей', '${entries.length}'),
               ],
             ),
           ),
@@ -33,7 +39,7 @@ class HistoryScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  'Сегодняшние записи:',
+                  'Записи о потреблении:',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -41,7 +47,7 @@ class HistoryScreen extends StatelessWidget {
                 ),
                 Chip(
                   backgroundColor: Colors.blue[100],
-                  label: const Text('5 записей'),
+                  label: Text('${entries.length} записей'),
                 ),
               ],
             ),
@@ -49,35 +55,20 @@ class HistoryScreen extends StatelessWidget {
 
           // Список записей
           Expanded(
-            child: ListView(
-              children: const [
-                HistoryItem(
-                  amount: '250 мл',
-                  time: '08:30',
-                  icon: Icons.coffee,
-                ),
-                HistoryItem(
-                  amount: '500 мл',
-                  time: '10:15',
-                  icon: Icons.fitness_center,
-                ),
-                HistoryItem(
-                  amount: '300 мл',
-                  time: '12:45',
-                  icon: Icons.lunch_dining,
-                ),
-                HistoryItem(
-                  amount: '150 мл',
-                  time: '15:20',
-                  icon: Icons.local_cafe,
-                ),
-                HistoryItem(
-                  amount: '100 мл',
-                  time: '18:00',
-                  icon: Icons.water_drop,
-                ),
-              ],
-            ),
+            child: entries.isEmpty
+                ? const Center(
+                    child: Text(
+                      'Нет записей о потреблении воды',
+                      style: TextStyle(fontSize: 16, color: Colors.grey),
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: entries.length,
+                    itemBuilder: (context, index) {
+                      final entry = entries[index];
+                      return _buildHistoryItem(entry);
+                    },
+                  ),
           ),
         ],
       ),
@@ -106,22 +97,8 @@ class HistoryScreen extends StatelessWidget {
       ],
     );
   }
-}
 
-class HistoryItem extends StatelessWidget {
-  final String amount;
-  final String time;
-  final IconData icon;
-
-  const HistoryItem({
-    super.key,
-    required this.amount,
-    required this.time,
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildHistoryItem(WaterEntry entry) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: ListTile(
@@ -132,27 +109,53 @@ class HistoryItem extends StatelessWidget {
             color: Colors.blue[100],
             shape: BoxShape.circle,
           ),
-          child: Icon(icon, color: Colors.blue),
+          child: const Icon(Icons.water_drop, color: Colors.blue),
         ),
         title: Text(
-          amount,
+          '${entry.amount} мл',
           style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
         ),
         subtitle: Text(
-          'Добавлено в $time',
+          entry.note.isNotEmpty ? entry.note : 'Без заметки',
           style: const TextStyle(color: Colors.grey),
         ),
-        trailing: Text(
-          time,
-          style: const TextStyle(
-            fontSize: 14,
-            color: Colors.grey,
-          ),
+        trailing: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              entry.formattedTime,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.grey,
+              ),
+            ),
+            Text(
+              entry.formattedDate,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+              ),
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  int _calculateTodayTotal(List<WaterEntry> entries) {
+    final today = DateTime.now();
+    return entries
+        .where((entry) =>
+            entry.time.day == today.day &&
+            entry.time.month == today.month &&
+            entry.time.year == today.year)
+        .fold(0, (sum, entry) => sum + entry.amount);
+  }
+
+  int _calculateTotal(List<WaterEntry> entries) {
+    return entries.fold(0, (sum, entry) => sum + entry.amount);
   }
 }

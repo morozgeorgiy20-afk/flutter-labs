@@ -1,8 +1,62 @@
 import 'package:flutter/material.dart';
 import '../widgets/water_progress_bar.dart';
+import '../services/water_tracker_service.dart';
+import 'add_water_screen.dart';
+import 'history_screen.dart';
+import 'settings_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final WaterTrackerService _trackerService = WaterTrackerService();
+
+  // Мотивирующие цитаты
+  final List<String> _motivationalQuotes = [
+    'Вода - источник жизни! Пейте регулярно.',
+    'Хорошее увлажнение улучшает концентрацию.',
+    'Стакан воды перед едой помогает пищеварению.',
+    'Вода выводит токсины из организма.',
+    'Пейте воду для здоровой кожи!',
+  ];
+  int _currentQuoteIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Добавим несколько тестовых записей
+    _addTestEntries();
+  }
+
+  void _addTestEntries() {
+    final now = DateTime.now();
+    _trackerService.addWaterEntry(250);
+    _trackerService.addWaterEntry(500);
+  }
+
+  void _changeQuote() {
+    setState(() {
+      _currentQuoteIndex = (_currentQuoteIndex + 1) % _motivationalQuotes.length;
+    });
+  }
+
+  void _handleQuickAdd(int amount) {
+    setState(() {
+      _trackerService.addWaterEntry(amount);
+    });
+
+    // Показать уведомление
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Добавлено $amount мл воды!'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -14,7 +68,15 @@ class HomeScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () {
-              // Навигация будет в ЛР5
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => SettingsScreen(
+                    trackerService: _trackerService,
+                    onGoalChanged: () => setState(() {}),
+                  ),
+                ),
+              );
             },
           ),
         ],
@@ -25,10 +87,10 @@ class HomeScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Прогресс-бар
-            const WaterProgressBar(
-              progress: 0.65,
-              currentAmount: '1300',
-              targetAmount: '2000',
+            WaterProgressBar(
+              progress: _trackerService.progress,
+              currentAmount: '${_trackerService.totalDrunkToday}',
+              targetAmount: '${_trackerService.dailyGoal}',
             ),
 
             const SizedBox(height: 30),
@@ -46,9 +108,9 @@ class HomeScreen extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildQuickButton(context, '250 мл', Icons.local_drink),
-                _buildQuickButton(context, '500 мл', Icons.water_drop),
-                _buildQuickButton(context, '750 мл', Icons.water),
+                _buildQuickButton(250),
+                _buildQuickButton(500),
+                _buildQuickButton(750),
               ],
             ),
 
@@ -56,8 +118,19 @@ class HomeScreen extends StatelessWidget {
 
             // Кнопка добавления своей порции
             ElevatedButton.icon(
-              onPressed: () {
-                // Навигация будет в ЛР5
+              onPressed: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AddWaterScreen(),
+                  ),
+                );
+
+                if (result != null && result is int) {
+                  setState(() {
+                    _trackerService.addWaterEntry(result);
+                  });
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue,
@@ -75,7 +148,14 @@ class HomeScreen extends StatelessWidget {
             // Кнопка истории
             OutlinedButton.icon(
               onPressed: () {
-                // Навигация будет в ЛР5
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => HistoryScreen(
+                      entries: _trackerService.entries,
+                    ),
+                  ),
+                );
               },
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 15),
@@ -91,38 +171,47 @@ class HomeScreen extends StatelessWidget {
             const SizedBox(height: 30),
 
             // Мотивирующая цитата
-            Container(
-              padding: const EdgeInsets.all(15),
-              decoration: BoxDecoration(
-                color: Colors.lightBlue[50],
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.lightbulb, color: Colors.amber),
-                      SizedBox(width: 10),
-                      Text(
-                        'Совет дня:',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
+            GestureDetector(
+              onTap: _changeQuote,
+              child: Container(
+                padding: const EdgeInsets.all(15),
+                decoration: BoxDecoration(
+                  color: Colors.lightBlue[50],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.lightbulb, color: Colors.amber),
+                        const SizedBox(width: 10),
+                        const Text(
+                          'Совет дня:',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Регулярное употребление воды улучшает '
-                    'метаболизм и способствует сохранению здоровья.',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[700],
+                        const Spacer(),
+                        IconButton(
+                          icon: const Icon(Icons.refresh, size: 20),
+                          onPressed: _changeQuote,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 10),
+                    Text(
+                      _motivationalQuotes[_currentQuoteIndex],
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -131,27 +220,39 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildQuickButton(BuildContext context, String amount, IconData icon) {
-    return Column(
-      children: [
-        Container(
-          width: 70,
-          height: 70,
-          decoration: BoxDecoration(
-            color: Colors.blue[100],
-            shape: BoxShape.circle,
+  Widget _buildQuickButton(int amount) {
+    return GestureDetector(
+      onTap: () => _handleQuickAdd(amount),
+      child: Column(
+        children: [
+          Container(
+            width: 70,
+            height: 70,
+            decoration: BoxDecoration(
+              color: Colors.blue[100],
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                '$amount',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue,
+                ),
+              ),
+            ),
           ),
-          child: Icon(icon, size: 30, color: Colors.blue),
-        ),
-        const SizedBox(height: 5),
-        Text(
-          amount,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 14,
+          const SizedBox(height: 5),
+          Text(
+            '$amount мл',
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

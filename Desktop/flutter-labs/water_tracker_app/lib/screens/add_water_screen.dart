@@ -1,7 +1,55 @@
 import 'package:flutter/material.dart';
 
-class AddWaterScreen extends StatelessWidget {
+class AddWaterScreen extends StatefulWidget {
   const AddWaterScreen({super.key});
+
+  @override
+  State<AddWaterScreen> createState() => _AddWaterScreenState();
+}
+
+class _AddWaterScreenState extends State<AddWaterScreen> {
+  final TextEditingController _amountController = TextEditingController();
+  int? _selectedAmount;
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    super.dispose();
+  }
+
+  void _handlePresetTap(int amount) {
+    setState(() {
+      _selectedAmount = amount;
+      _amountController.text = amount.toString();
+    });
+  }
+
+  void _handleAdd() {
+    final amount = int.tryParse(_amountController.text);
+
+    if (amount == null || amount <= 0) {
+      _showErrorDialog('Пожалуйста, введите корректное количество воды');
+      return;
+    }
+
+    Navigator.pop(context, amount);
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Ошибка'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,15 +95,23 @@ class AddWaterScreen extends StatelessWidget {
 
             // Поле ввода
             TextField(
+              controller: _amountController,
               decoration: InputDecoration(
                 labelText: 'Объем в миллилитрах',
-                prefixIcon: const Icon(Icons.measurement),
+                prefixIcon: const Icon(Icons.linear_scale),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
                 hintText: 'Например: 250',
               ),
               keyboardType: TextInputType.number,
+              onChanged: (value) {
+                setState(() {
+                  if (int.tryParse(value) != _selectedAmount) {
+                    _selectedAmount = null;
+                  }
+                });
+              },
             ),
 
             const SizedBox(height: 20),
@@ -74,12 +130,12 @@ class AddWaterScreen extends StatelessWidget {
               spacing: 10,
               runSpacing: 10,
               children: [
-                _buildPresetButton('150 мл'),
-                _buildPresetButton('250 мл'),
-                _buildPresetButton('330 мл'),
-                _buildPresetButton('500 мл'),
-                _buildPresetButton('750 мл'),
-                _buildPresetButton('1000 мл'),
+                _buildPresetButton(150),
+                _buildPresetButton(250),
+                _buildPresetButton(330),
+                _buildPresetButton(500),
+                _buildPresetButton(750),
+                _buildPresetButton(1000),
               ],
             ),
 
@@ -87,9 +143,7 @@ class AddWaterScreen extends StatelessWidget {
 
             // Кнопка добавления
             ElevatedButton(
-              onPressed: () {
-                // Логика будет в ЛР5
-              },
+              onPressed: _handleAdd,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue,
                 padding: const EdgeInsets.symmetric(vertical: 16),
@@ -104,9 +158,7 @@ class AddWaterScreen extends StatelessWidget {
 
             // Кнопка отмены
             TextButton(
-              onPressed: () {
-                // Навигация будет в ЛР5
-              },
+              onPressed: () => Navigator.pop(context),
               child: const Text(
                 'ОТМЕНА',
                 style: TextStyle(color: Colors.grey),
@@ -118,15 +170,16 @@ class AddWaterScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPresetButton(String amount) {
-    return OutlinedButton(
-      onPressed: () {
-        // Логика будет в ЛР5
-      },
-      style: OutlinedButton.styleFrom(
-        side: const BorderSide(color: Colors.blue),
+  Widget _buildPresetButton(int amount) {
+    final isSelected = _selectedAmount == amount;
+
+    return ElevatedButton(
+      onPressed: () => _handlePresetTap(amount),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: isSelected ? Colors.blue[700] : Colors.blue,
+        foregroundColor: Colors.white,
       ),
-      child: Text(amount),
+      child: Text('$amount мл'),
     );
   }
 }
