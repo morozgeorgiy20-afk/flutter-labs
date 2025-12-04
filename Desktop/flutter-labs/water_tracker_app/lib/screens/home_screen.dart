@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import '../services/api_service.dart';
+import '../services/storage_service.dart';
+import '../models/quote.dart';
+import '../models/weather.dart';
 import '../widgets/water_progress_bar.dart';
-import '../services/water_tracker_service.dart';
 import 'add_water_screen.dart';
 import 'history_screen.dart';
 import 'settings_screen.dart';
@@ -13,91 +16,249 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final WaterTrackerService _trackerService = WaterTrackerService();
+  final ApiService _apiService = ApiService();
+  final StorageService _storageService = StorageService();
 
-  // Мотивирующие цитаты
-  final List<String> _motivationalQuotes = [
-    'Вода - источник жизни! Пейте регулярно.',
-    'Хорошее увлажнение улучшает концентрацию.',
-    'Стакан воды перед едой помогает пищеварению.',
-    'Вода выводит токсины из организма.',
-    'Пейте воду для здоровой кожи!',
-  ];
-  int _currentQuoteIndex = 0;
+  late Quote _dailyQuote;
+  late Weather _weather;
+  List<String> _waterTips = [];
+  bool _isLoading = true;
+  int _totalWaterToday = 0;
+  int _dailyGoal = 2000;
+  String _userName = '';
 
   @override
   void initState() {
     super.initState();
-    // Добавим несколько тестовых записей
-    _addTestEntries();
+    _loadData();
   }
 
-  void _addTestEntries() {
+  Future<void> _loadData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await Future.wait([
+        _loadStorageData(),
+        _loadQuote(),
+        _loadWeather(),
+        _loadWaterTips(),
+      ]);
+    } catch (e) {
+      print('Error loading data: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadStorageData() async {
+    final goal = await _storageService.getDailyGoal();
+    final name = await _storageService.getUserName();
+    final total = await _storageService.getTodayWaterTotal();
+
+    setState(() {
+      _dailyGoal = goal;
+      _userName = name;
+      _totalWaterToday = total;
+    });
+  }
+
+  Future<void> _loadQuote() async {
+    final lastUpdate = await _storageService.getLastQuoteUpdate();
     final now = DateTime.now();
-    _trackerService.addWaterEntry(250);
-    _trackerService.addWaterEntry(500);
+
+    if (lastUpdate == null || now.difference(lastUpdate).inHours > 24) {
+      final quote = await _apiService.fetchWaterQuote();
+      await _storageService.updateLastQuoteUpdate();
+
+      setState(() {
+        _dailyQuote = quote;
+      });
+    } else {
+      setState(() {
+        _dailyQuote = Quote.empty();
+      });
+    }
   }
 
-  void _changeQuote() {
+  Future<void> _loadWeather() async {
+    final city = await _storageService.getSelectedCity();
+    final lastUpdate = await _storageService.getLastWeatherUpdate();
+    final now = DateTime.now();
+
+    if (lastUpdate == null || now.difference(lastUpdate).inHours > 3) {
+      final weather = await _apiService.fetchWeather(city: city);
+      await _storageService.updateLastWeatherUpdate();
+
+      setState(() {
+        _weather = weather;
+      });
+    } else {
+      setState(() {
+        _weather = Weather(
+          temperature: 20.0,
+          condition: 'Clear',
+          location: city,
+          humidity: 50,
+        );
+      });
+    }
+  }
+
+  Future<void> _loadWaterTips() async {
+    final tips = await _apiService.fetchWaterTips();
     setState(() {
-      _currentQuoteIndex = (_currentQuoteIndex + 1) % _motivationalQuotes.length;
+      _waterTips = tips;
     });
   }
 
-  void _handleQuickAdd(int amount) {
-    setState(() {
-      _trackerService.addWaterEntry(amount);
-    });
+  Future<void> _addWater(int amount) async {
+    await _storageService.saveWaterEntry(amount);
+    await _loadStorageData();
 
-    // Показать уведомление
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Добавлено $amount мл воды!'),
+        content: Text('Added $amount ml of water!'),
         duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  Future<void> _refreshData() async {
+    await _loadData();
+  }
+
+  void _navigateToAddWater() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const AddWaterScreen()),
+    );
+
+    if (result != null && result is int) {
+      await _addWater(result);
+    }
+  }
+
+  void _navigateToHistory() async {
+    final entries = await _storageService.getWaterEntries();
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => HistoryScreen(entries: entries),
+      ),
+    );
+  }
+
+  void _navigateToSettings() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SettingsScreen(
+          storageService: _storageService,
+          onSettingsChanged: _loadStorageData,
+        ),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Water Tracker'),
         backgroundColor: Colors.blue,
         actions: [
           IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _refreshData,
+          ),
+          IconButton(
             icon: const Icon(Icons.settings),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => SettingsScreen(
-                    trackerService: _trackerService,
-                    onGoalChanged: () => setState(() {}),
-                  ),
-                ),
-              );
-            },
+            onPressed: _navigateToSettings,
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+      body: RefreshIndicator(
+        onRefresh: _refreshData,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
           children: [
-            // Прогресс-бар
+            // Greeting
+            if (_userName.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Text(
+                  'Hello, $_userName!',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue,
+                  ),
+                ),
+              ),
+
+            // Weather widget
+            _buildWeatherWidget(),
+
+            const SizedBox(height: 20),
+
+            // Progress bar
             WaterProgressBar(
-              progress: _trackerService.progress,
-              currentAmount: '${_trackerService.totalDrunkToday}',
-              targetAmount: '${_trackerService.dailyGoal}',
+              progress: _dailyGoal > 0 ? _totalWaterToday / _dailyGoal : 0,
+              currentAmount: '$_totalWaterToday',
+              targetAmount: '$_dailyGoal',
             ),
 
-            const SizedBox(height: 30),
+            const SizedBox(height: 20),
 
-            // Быстрые кнопки
+            // Weather recommendation
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.water_drop, color: Colors.blue),
+                        SizedBox(width: 8),
+                        Text(
+                          'Hydration Tip:',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(_weather.waterRecommendation),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Daily quote
+            _buildQuoteWidget(),
+
+            const SizedBox(height: 20),
+
+            // Quick add buttons
             const Text(
-              'Быстрое добавление:',
+              'Quick Add:',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -116,101 +277,147 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 20),
 
-            // Кнопка добавления своей порции
+            // Action buttons
             ElevatedButton.icon(
-              onPressed: () async {
-                final result = await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const AddWaterScreen(),
-                  ),
-                );
-
-                if (result != null && result is int) {
-                  setState(() {
-                    _trackerService.addWaterEntry(result);
-                  });
-                }
-              },
+              onPressed: _navigateToAddWater,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue,
                 padding: const EdgeInsets.symmetric(vertical: 15),
               ),
               icon: const Icon(Icons.add),
               label: const Text(
-                'Добавить свою порцию',
+                'Add Custom Amount',
                 style: TextStyle(fontSize: 16),
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
 
-            // Кнопка истории
             OutlinedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => HistoryScreen(
-                      entries: _trackerService.entries,
-                    ),
-                  ),
-                );
-              },
+              onPressed: _navigateToHistory,
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 15),
                 side: const BorderSide(color: Colors.blue),
               ),
               icon: const Icon(Icons.history, color: Colors.blue),
               label: const Text(
-                'История потребления',
+                'Drinking History',
                 style: TextStyle(fontSize: 16, color: Colors.blue),
               ),
             ),
 
-            const SizedBox(height: 30),
+            const SizedBox(height: 20),
 
-            // Мотивирующая цитата
-            GestureDetector(
-              onTap: _changeQuote,
-              child: Container(
-                padding: const EdgeInsets.all(15),
-                decoration: BoxDecoration(
-                  color: Colors.lightBlue[50],
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.lightbulb, color: Colors.amber),
-                        const SizedBox(width: 10),
-                        const Text(
-                          'Совет дня:',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
+            // Water tip of the day
+            if (_waterTips.isNotEmpty)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.lightbulb, color: Colors.amber),
+                          SizedBox(width: 8),
+                          Text(
+                            'Tip of the Day:',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
                           ),
-                        ),
-                        const Spacer(),
-                        IconButton(
-                          icon: const Icon(Icons.refresh, size: 20),
-                          onPressed: _changeQuote,
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      _motivationalQuotes[_currentQuoteIndex],
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[700],
+                        ],
                       ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _waterTips[DateTime.now().day % _waterTips.length],
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWeatherWidget() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            const Icon(Icons.cloud, color: Colors.blue, size: 40),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _weather.location,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
                     ),
-                  ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${_weather.temperature.toStringAsFixed(1)}°C, ${_weather.condition}',
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                  Text(
+                    'Humidity: ${_weather.humidity}%',
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuoteWidget() {
+    return Card(
+      color: Colors.lightBlue[50],
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.format_quote, color: Colors.blue),
+                SizedBox(width: 8),
+                Text(
+                  'Quote of the Day:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _dailyQuote.text,
+              style: const TextStyle(
+                fontSize: 14,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                '- ${_dailyQuote.author}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey,
                 ),
               ),
             ),
@@ -222,7 +429,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildQuickButton(int amount) {
     return GestureDetector(
-      onTap: () => _handleQuickAdd(amount),
+      onTap: () => _addWater(amount),
       child: Column(
         children: [
           Container(
@@ -245,7 +452,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 5),
           Text(
-            '$amount мл',
+            '$amount ml',
             style: const TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 14,

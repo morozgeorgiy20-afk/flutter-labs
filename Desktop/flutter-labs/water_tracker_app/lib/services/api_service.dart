@@ -1,0 +1,86 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../models/quote.dart';
+import '../models/weather.dart';
+
+class ApiService {
+  static const String _zenQuotesUrl = 'https://zenquotes.io/api/today';
+
+  // Get daily quote about water/health
+  Future<Quote> fetchWaterQuote() async {
+    try {
+      final response = await http.get(Uri.parse(_zenQuotesUrl));
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        if (data.isNotEmpty) {
+          return Quote.fromJson(data[0]);
+        }
+      }
+    } catch (e) {
+      print('Error fetching quote: $e');
+    }
+
+    return Quote.empty();
+  }
+
+  // Get weather (using demo key)
+  Future<Weather> fetchWeather({String city = 'Moscow'}) async {
+    const apiKey = 'c0f3a9e6d6d3c09d22c5f9a4d4f0c1b4'; // Demo key
+
+    try {
+      final response = await http.get(
+        Uri.parse('https://api.openweathermap.org/data/2.5/weather?q=$city&appid=$apiKey&units=metric'),
+      );
+
+      if (response.statusCode == 200) {
+        return Weather.fromJson(json.decode(response.body));
+      } else {
+        // If API fails, return empty weather with the requested city
+        return Weather(
+          temperature: 20.0,
+          condition: 'Clear',
+          location: city,
+          humidity: 50,
+        );
+      }
+    } catch (e) {
+      print('Error fetching weather: $e');
+      return Weather.empty();
+    }
+  }
+
+  // Get water tips
+  Future<List<String>> fetchWaterTips() async {
+    // Static tips that could come from API
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    return [
+      'Drink a glass of water after waking up',
+      'Have water before each meal',
+      'Carry a water bottle with you',
+      'Set water drinking reminders',
+      'Eat water-rich foods (cucumbers, watermelon)',
+      'Drink more during physical activity',
+      'Monitor urine color - it should be light',
+      'Don\'t wait until you\'re thirsty',
+      'Drink water when you feel tired',
+      'Flavor water with lemon or mint if needed',
+    ];
+  }
+
+  // Get hydration facts
+  Future<List<String>> fetchHydrationFacts() async {
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    return [
+      'The human body is about 60% water',
+      'Water helps regulate body temperature',
+      'Proper hydration improves cognitive function',
+      'Water aids digestion and nutrient absorption',
+      'Dehydration can cause headaches and fatigue',
+      'Water helps keep skin healthy',
+      'Men need about 3.7 liters, women 2.7 liters daily',
+    ];
+  }
+}

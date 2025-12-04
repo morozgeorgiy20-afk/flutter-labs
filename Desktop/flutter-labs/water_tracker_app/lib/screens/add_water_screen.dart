@@ -28,7 +28,7 @@ class _AddWaterScreenState extends State<AddWaterScreen> {
     final amount = int.tryParse(_amountController.text);
 
     if (amount == null || amount <= 0) {
-      _showErrorDialog('Пожалуйста, введите корректное количество воды');
+      _showErrorDialog('Please enter a valid water amount');
       return;
     }
 
@@ -39,7 +39,7 @@ class _AddWaterScreenState extends State<AddWaterScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Ошибка'),
+        title: const Text('Error'),
         content: Text(message),
         actions: [
           TextButton(
@@ -55,7 +55,7 @@ class _AddWaterScreenState extends State<AddWaterScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Добавить воду'),
+        title: const Text('Add Water'),
         backgroundColor: Colors.blue,
       ),
       body: Padding(
@@ -63,7 +63,7 @@ class _AddWaterScreenState extends State<AddWaterScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Иллюстрация
+            // Illustration
             Container(
               height: 150,
               decoration: BoxDecoration(
@@ -81,9 +81,9 @@ class _AddWaterScreenState extends State<AddWaterScreen> {
 
             const SizedBox(height: 30),
 
-            // Заголовок
+            // Title
             const Text(
-              'Сколько воды вы выпили?',
+              'How much water did you drink?',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -93,16 +93,16 @@ class _AddWaterScreenState extends State<AddWaterScreen> {
 
             const SizedBox(height: 20),
 
-            // Поле ввода
+            // Input field
             TextField(
               controller: _amountController,
-              decoration: InputDecoration(
-                labelText: 'Объем в миллилитрах',
-                prefixIcon: const Icon(Icons.linear_scale),
+              decoration: const InputDecoration(
+                labelText: 'Amount in milliliters',
+                prefixIcon: Icon(Icons.linear_scale),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.all(Radius.circular(10)),
                 ),
-                hintText: 'Например: 250',
+                hintText: 'Example: 250',
               ),
               keyboardType: TextInputType.number,
               onChanged: (value) {
@@ -116,9 +116,9 @@ class _AddWaterScreenState extends State<AddWaterScreen> {
 
             const SizedBox(height: 20),
 
-            // Предустановленные значения
+            // Preset values
             const Text(
-              'Или выберите из списка:',
+              'Or choose from presets:',
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey,
@@ -141,7 +141,7 @@ class _AddWaterScreenState extends State<AddWaterScreen> {
 
             const SizedBox(height: 30),
 
-            // Кнопка добавления
+            // Add button
             ElevatedButton(
               onPressed: _handleAdd,
               style: ElevatedButton.styleFrom(
@@ -149,18 +149,18 @@ class _AddWaterScreenState extends State<AddWaterScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
               child: const Text(
-                'ДОБАВИТЬ',
+                'ADD WATER',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ),
 
             const SizedBox(height: 10),
 
-            // Кнопка отмены
+            // Cancel button
             TextButton(
               onPressed: () => Navigator.pop(context),
               child: const Text(
-                'ОТМЕНА',
+                'CANCEL',
                 style: TextStyle(color: Colors.grey),
               ),
             ),
@@ -179,7 +179,7 @@ class _AddWaterScreenState extends State<AddWaterScreen> {
         backgroundColor: isSelected ? Colors.blue[700] : Colors.blue,
         foregroundColor: Colors.white,
       ),
-      child: Text('$amount мл'),
+      child: Text('$amount ml'),
     );
   }
 }

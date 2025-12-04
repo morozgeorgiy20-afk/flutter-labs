@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import '../models/water_entry.dart';
 
 class HistoryScreen extends StatelessWidget {
-  final List<WaterEntry> entries;
+  final List<Map<String, dynamic>> entries;
 
   const HistoryScreen({
     super.key,
@@ -11,35 +10,37 @@ class HistoryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final todayEntries = _filterTodayEntries(entries);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('История'),
+        title: const Text('Drinking History'),
         backgroundColor: Colors.blue,
       ),
       body: Column(
         children: [
-          // Статистика за день
+          // Today's statistics
           Container(
             padding: const EdgeInsets.all(20),
             color: Colors.blue[50],
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildStatItem('Сегодня', '${_calculateTodayTotal(entries)} мл'),
-                _buildStatItem('Всего', '${_calculateTotal(entries)} мл'),
-                _buildStatItem('Записей', '${entries.length}'),
+                _buildStatItem('Today', '${_calculateTodayTotal(entries)} ml'),
+                _buildStatItem('Total', '${_calculateTotal(entries)} ml'),
+                _buildStatItem('Entries', '${entries.length}'),
               ],
             ),
           ),
 
-          // Заголовок списка
+          // List header
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  'Записи о потреблении:',
+                  'Today\'s Entries:',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -47,25 +48,25 @@ class HistoryScreen extends StatelessWidget {
                 ),
                 Chip(
                   backgroundColor: Colors.blue[100],
-                  label: Text('${entries.length} записей'),
+                  label: Text('${todayEntries.length} entries'),
                 ),
               ],
             ),
           ),
 
-          // Список записей
+          // Entries list
           Expanded(
-            child: entries.isEmpty
+            child: todayEntries.isEmpty
                 ? const Center(
                     child: Text(
-                      'Нет записей о потреблении воды',
+                      'No water entries for today',
                       style: TextStyle(fontSize: 16, color: Colors.grey),
                     ),
                   )
                 : ListView.builder(
-                    itemCount: entries.length,
+                    itemCount: todayEntries.length,
                     itemBuilder: (context, index) {
-                      final entry = entries[index];
+                      final entry = todayEntries[index];
                       return _buildHistoryItem(entry);
                     },
                   ),
@@ -98,7 +99,11 @@ class HistoryScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildHistoryItem(WaterEntry entry) {
+  Widget _buildHistoryItem(Map<String, dynamic> entry) {
+    final time = DateTime.parse(entry['time']);
+    final formattedTime = '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+    final note = entry['note'] ?? '';
+
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: ListTile(
@@ -112,50 +117,42 @@ class HistoryScreen extends StatelessWidget {
           child: const Icon(Icons.water_drop, color: Colors.blue),
         ),
         title: Text(
-          '${entry.amount} мл',
+          '${entry['amount']} ml',
           style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
         ),
-        subtitle: Text(
-          entry.note.isNotEmpty ? entry.note : 'Без заметки',
-          style: const TextStyle(color: Colors.grey),
-        ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              entry.formattedTime,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Colors.grey,
-              ),
-            ),
-            Text(
-              entry.formattedDate,
-              style: const TextStyle(
-                fontSize: 12,
-                color: Colors.grey,
-              ),
-            ),
-          ],
+        subtitle: note.isNotEmpty
+            ? Text(note)
+            : const Text('No note'),
+        trailing: Text(
+          formattedTime,
+          style: const TextStyle(
+            fontSize: 14,
+            color: Colors.grey,
+          ),
         ),
       ),
     );
   }
 
-  int _calculateTodayTotal(List<WaterEntry> entries) {
+  List<Map<String, dynamic>> _filterTodayEntries(List<Map<String, dynamic>> entries) {
     final today = DateTime.now();
-    return entries
-        .where((entry) =>
-            entry.time.day == today.day &&
-            entry.time.month == today.month &&
-            entry.time.year == today.year)
-        .fold(0, (sum, entry) => sum + entry.amount);
+    return entries.where((entry) {
+      final time = DateTime.parse(entry['time']);
+      return time.year == today.year &&
+             time.month == today.month &&
+             time.day == today.day;
+    }).toList();
   }
 
-  int _calculateTotal(List<WaterEntry> entries) {
-    return entries.fold(0, (sum, entry) => sum + entry.amount);
+  int _calculateTodayTotal(List<Map<String, dynamic>> entries) {
+    return _filterTodayEntries(entries)
+        .fold(0, (sum, entry) => sum + (entry['amount'] as int));
+  }
+
+  int _calculateTotal(List<Map<String, dynamic>> entries) {
+    return entries.fold(0, (sum, entry) => sum + (entry['amount'] as int));
   }
 }
